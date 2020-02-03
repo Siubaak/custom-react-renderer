@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>Host</title>
+</head>
+<body>
+  <!-- JavaScript Runtime（隐藏）-->
+  <iframe id="jsrt" style="display: none;" src="http://localhost:3000"></iframe>
+  <!-- 视图容器节点 -->
+  <div id="app"></div>
+  <!-- Coolboy-A -->
+  <script>
+    const jsRuntime = document.getElementById('jsrt').contentWindow;
+    window.addEventListener('message', e => {
+      const opCodes = e.data;
+      const op = opCodes[0];
+      const args = opCodes[1];
+      const props = opCodes[2];
+      // 打印一下指令
+      console.log(op, args);
+      // 处理指令
+      handleOpCode(op, args, props);
+    });
+    // 储存节点，之后都会根据id来获取对应节点
+    const nodeList = [document.getElementById('app')];
+    // 处理指令
+    function handleOpCode(op, args, props) {
+      switch (op) {
+        case 'createElement': {
+          // 创建节点
+          const node = document.createElement(args[0]);
+          // 绑定属性
+          Object.keys(props).forEach(key => {
+            const val = props[key];
+            if (key === 'className' || key === 'style') {
+              node[key] = val;
+            } else if (key.startsWith('on')) {
+              // 事件触发，通知iFrame调用相应的回调
+              node[key] = () => jsRuntime.postMessage(val, '*');
+            } else {
+              node.setAttribute(key, val);
+            }
+          });
+          // 储存节点
+          nodeList.push(node);
+          break;
+        }
+        case 'createTextNode': {
+          // 创建文字节点
+          const text = document.createTextNode(args[0]);
+          // 储存节点
+          nodeList.push(text);
+          break;
+        }
+        case 'appendChild': {
+          // 获取相应父节点和子节点
+          const parent = nodeList[args[0]];
+          const child = nodeList[args[1]];
+          // 调用父节点appendChild方法插入子节点
+          parent.appendChild(child);
+          break;
+        }
+        case 'updateElement': {
+          // 获取更新节点
+          const node = nodeList[args[0]];
+          // 更新属性（这里简单处理，实际上需要对比前后属性，对属性进行更新和移除）
+          Object.keys(props).forEach(key => {
+            const val = props[key];
+            if (key === 'className' || key === 'style') {
+              node[key] = val;
+            } else if (key.startsWith('on')) {
+              // 事件触发，通知iFrame调用相应的回调
+              node[key] = () => jsRuntime.postMessage(val, '*');
+            } else {
+              node.setAttribute(key, val);
+            }
+          });
+          break;
+        }
+        case 'updateTextNode': {
+          // 获取更新文字节点
+          const text = nodeList[args[0]];
+          const newText = args[1];
+          // 更新节点
+          text.textContent = newText;
+          break;
+        }
+        case 'insertBefore': {
+          // 我们的栗子暂时不需要这个指令，留作课后作业吧
+          break;
+        }
+        case 'removeChild': {
+          // 我们的栗子暂时不需要这个指令，留作课后作业吧
+          break;
+        }
+        default: break;
+      }
+    }
+  </script>
+</body>
+</html>
